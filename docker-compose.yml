@@ -1,0 +1,95 @@
+
+services:
+  qdrant:
+    container_name: qdrant
+    image: qdrant/qdrant:latest
+    ports:
+      - "6333:6333"
+    volumes:
+      - "./qdrant_storage:/qdrant/storage"
+
+  ollama:
+    container_name: ollama
+    image: ollama/ollama:latest
+    ports:
+        - "11434:11434"
+    volumes:
+      - "./ollama:/root/.ollama"
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all        # or a specific GPU UUID/index
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      CUDA_VISIBLE_DEVICES: "0"          # use only NVIDIA GPU index 0
+
+#      NVIDIA_VISIBLE_DEVICES: "0"
+
+      # optional knobs:
+      OLLAMA_NUM_GPU: "1"     # how many GPUs to use,  let Ollama offload to that GPU
+      OLLAMA_KV_CACHE: "1"    # keep KV cache on GPU when possible
+      OLLAMA_FLASH_ATTENTION: 1 # can speed up attention on supported stacks.
+      OLLAMA_MAX_LOADED_MODELS: 1 #  cap concurrent models (prevents OOM)
+      OMP_NUM_THREADS : 2  # tune CPU threads when offloading to CPU.
+#    deploy:
+#      resources:
+#        reservations:
+#          devices:
+#            - driver: nvidia
+#              count: 1
+#              capabilities: [ "gpu" ]
+    command:
+      - "serve"
+
+  api:
+    container_name: api
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+
+    build: .
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      QDRANT_URL: http://qdrant:6333
+      QDRANT_COLLECTION: confluence
+      CHAT_MODEL: llama3.1
+      EMBED_MODEL: nomic-embed-text
+      CONF_BASE: ${CONF_BASE}
+      CONF_TOKEN: ${CONF_TOKEN}
+      GDRIVE_AUTH_JSON_B64: ${GDRIVE_AUTH_JSON_B64}
+      GDRIVE_USE_DOMAIN_WIDE: ${GDRIVE_USE_DOMAIN_WIDE}
+      GRAPH_TENANT_ID: ${GRAPH_TENANT_ID}
+      GRAPH_CLIENT_ID: ${GRAPH_CLIENT_ID}
+      GRAPH_CLIENT_SECRET: ${GRAPH_CLIENT_SECRET}
+      ONEDRIVE_SITE_ID: ${ONEDRIVE_SITE_ID}
+      INGEST_INTERVAL_MINUTES: ${INGEST_INTERVAL_MINUTES}
+    ports:
+      - "9876:8000"
+    tty: true
+    stdin_open: true
+    volumes:
+      - ./chat:/app/chat
+      - ./logs:/tmp/logs
+    command:
+#      - bash
+      - "uvicorn"
+      - "chat.main:app"
+      - "--host"
+      - "0.0.0.0"
+      - "--port"
+      - "8000"
+      - "--reload"
+    depends_on:
+      - qdrant
+      - ollama
+
+  openwebui:
+    container_name: openwebui
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "3000:8080"
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+    depends_on:
+      - ollama
+#
+#volumes:
+#  qdrant_storage:
+#  ollama:
