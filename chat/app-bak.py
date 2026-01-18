@@ -11,7 +11,7 @@
 # from qdrant_client import QdrantClient
 # from qdrant_client.models import FieldCondition, Filter, MatchAny, MatchValue
 #
-# logger = logging.getLogger("talk-to-bob-chat")
+# logger = logging.getLogger("chat-with-docs-chat")
 #
 # OLLAMA = os.environ.get("OLLAMA_URL", "http://ollama:11434")
 # EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
